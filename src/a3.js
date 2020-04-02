@@ -24,8 +24,8 @@ class Man {
     }
 }
 
-const screenWidth = 80;
-const screenHeight = 25;
+const screenWidth = 120;
+const screenHeight = 40;
 const textFont = '20px Courier New';
 const block = '\u{2591}';
 const man = new Man();
