@@ -1,18 +1,7 @@
 import { Key } from './controller';
 import { Cell } from './map';
+import { RenderCharacters } from './terminal';
 
-export var RenderCharacters = {
-    Wall: '\u{2588}',
-    WallWithDarkShade: '\u{2593}',
-    WallWithMediumShade: '\u{2592}',
-    WallWithLightShade: '\u{2591}',
-    Empty: ' ',
-    Floor: '#',
-    FloorWithDarkShade: 'x',
-    FloorWithMediumShade: '~',
-    FloorWithLightShade: '-',
-    Boundary: '|'
-};
 
 export class A3 {
     constructor(terminal, controller, map, player) {
