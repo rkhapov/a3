@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/a3.js',
+  entry: './src/index.js',
   devtool: "source-map",
   mode: 'production',
   output: {

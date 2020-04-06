@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "a3 game engine",
   "main": "index.js",
+  "private": true,
   "directories": {
     "lib": "lib"
   },

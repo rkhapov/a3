@@ -17,11 +17,11 @@ export class TerminalScreen {
         }
 
         let context = canvas.getContext('2d');
-        
+
         context.font = font;
 
         let symbolWidth = context.measureText('M').width;
-        let symbolHeight = context.measureText('\u{2588}').width * 2;
+        let symbolHeight = context.measureText('\u{2588}').width * 2 - 2;
 
         canvas.width = symbolWidth * width;
         canvas.height = symbolHeight * height;
@@ -40,13 +40,13 @@ export class TerminalScreen {
         }        
     }
 
-    put(smb, x, y) {
+    put(smb, y, x) {
         this.buffer[y * this.width + x] = smb;
     }
 
-    putString(message, x, y) {
+    putString(message, y, x) {
         for (let i = 0; i < message.length; i++) {
-            this.put(message.charAt(i), x + i, y);
+            this.put(message.charAt(i), y, x + i);
         }
     }
 
