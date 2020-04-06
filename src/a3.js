@@ -1,4 +1,4 @@
-import { Key } from './keyboard';
+import { Key } from './controller';
 import { Cell } from './map';
 
 export var RenderCharacters = {
@@ -15,11 +15,13 @@ export var RenderCharacters = {
 };
 
 export class A3 {
-    constructor(terminal, keyboard, map, player) {
+    constructor(terminal, controller, map, player) {
         this.terminal = terminal;
-        this.keyboard = keyboard;
+        this.controller = controller;
         this.map = map;
         this.player = player;
+        this.lastMousePosition = -1;
+        controller.onMouseMove(e => this._onMouseMove(e));
     }
 
     render(elapsed) {
@@ -30,6 +32,42 @@ export class A3 {
         this._drawMetaInfo(elapsed);
     }
 
+    _onMouseMove(newX) {
+        if (this.lastMousePosition < 0) {
+            this.lastMousePosition = newX;
+            return;
+        }
+
+        let mouseSensivity = 25;
+
+        if (newX == this.lastMousePosition) {
+            if (newX == 0) {
+                this._doLeftTurn(mouseSensivity);
+            }
+            else {
+                this._doRightTurn(mouseSensivity);
+            }
+        }
+        else {
+            if (newX < this.lastMousePosition) {
+                this._doLeftTurn(mouseSensivity);
+            }
+            else {
+                this._doRightTurn(mouseSensivity);
+            }
+        }
+
+        this.lastMousePosition = newX;
+    }
+
+    _doLeftTurn(elapsed) {
+        this.player.viewAngle -= 0.003 * elapsed;
+    }
+
+    _doRightTurn(elapsed) {
+        this.player.viewAngle += 0.003 * elapsed;
+    }
+
     _draw3dScene() {
         let screenWidth = this.terminal.width;
         let screenHeight = this.terminal.height;
@@ -38,7 +76,7 @@ export class A3 {
         for (let x = 0; x < screenWidth; x++) {
             let ray = this._computeRay(x);
 
-            let ceil = (screenHeight / 2) - screenHeight / ray.distance;
+            let ceil = (screenHeight / 2) - screenHeight / (ray.distance * Math.cos(this.player.viewAngle - ray.angle));
             let floor = screenHeight - ceil;
 
             let wallSymbol = RenderCharacters.Empty;
@@ -102,7 +140,7 @@ export class A3 {
         let boundary = false;
 
         while (!hit && rayLength < this.player.viewDepth) {
-            rayLength += 0.1;
+            rayLength += 0.01;
 
             let testX = Math.floor(playerX + xRayUnit * rayLength);
             let testY = Math.floor(playerY + yRayUnit * rayLength);
@@ -126,7 +164,7 @@ export class A3 {
                     }
                 }
 
-                boundaries.sort((a, b) => a.distance < b.distance);
+                boundaries.sort((a, b) => a.distance > b.distance);
 
                 let maxBoundAngle = 0.005;
                 boundary = Math.acos(boundaries[0].scalar) < maxBoundAngle
@@ -138,22 +176,23 @@ export class A3 {
         return {
             hit: hit,
             distance: rayLength,
-            boundary: boundary
+            boundary: boundary,
+            angle: rayAngle
         };
     }
 
     _processKeyboard(elapsed) {
-        if (this.keyboard.isPressed(Key.LeftArrow)) {
-            this.player.viewAngle -= 0.003 * elapsed;
+        if (this.controller.isPressed(Key.LeftArrow)) {
+            this._doLeftTurn(elapsed);
         }
 
-        if (this.keyboard.isPressed(Key.RightArrow)) {
-            this.player.viewAngle += 0.003 * elapsed;
+        if (this.controller.isPressed(Key.RightArrow)) {
+            this._doRightTurn(elapsed);
         }
 
-        if (this.keyboard.isPressed(Key.UpArrow)) {
-            let dx = Math.sin(this.player.viewAngle) * 0.01 * elapsed;
-            let dy = Math.cos(this.player.viewAngle) * 0.01 * elapsed;
+        if (this.controller.isPressed(Key.UpArrow) || this.controller.isPressed(Key.W)) {
+            let dx = Math.sin(this.player.viewAngle) * 0.005 * elapsed;
+            let dy = Math.cos(this.player.viewAngle) * 0.005 * elapsed;
 
             this.player.x += dx;
             this.player.y += dy;
@@ -167,9 +206,9 @@ export class A3 {
             }
         }
 
-        if (this.keyboard.isPressed(Key.DownArrow)) {
-            let dx = Math.sin(this.player.viewAngle) * 0.01 * elapsed;
-            let dy = Math.cos(this.player.viewAngle) * 0.01 * elapsed;
+        if (this.controller.isPressed(Key.DownArrow) || this.controller.isPressed(Key.S)) {
+            let dx = Math.sin(this.player.viewAngle) * 0.005 * elapsed;
+            let dy = Math.cos(this.player.viewAngle) * 0.005 * elapsed;
 
             this.player.x -= dx;
             this.player.y -= dy;
@@ -180,6 +219,38 @@ export class A3 {
             if ((!this.map.inBound(intY, intX)) || this.map.at(intY, intX) == Cell.Wall) {
                 this.player.x += dx;
                 this.player.y += dy;
+            }
+        }
+
+        if (this.controller.isPressed(Key.D)) {
+            let dy = Math.sin(this.player.viewAngle) * 0.005 * elapsed;
+            let dx = Math.cos(this.player.viewAngle) * 0.005 * elapsed;
+
+            this.player.x += dx;
+            this.player.y -= dy;
+
+            let intX = Math.floor(this.player.x);
+            let intY = Math.floor(this.player.y);
+
+            if ((!this.map.inBound(intY, intX)) || this.map.at(intY, intX) == Cell.Wall) {
+                this.player.x -= dx;
+                this.player.y += dy;
+            }
+        }
+
+        if (this.controller.isPressed(Key.A)) {
+            let dy = Math.sin(this.player.viewAngle) * 0.005 * elapsed;
+            let dx = Math.cos(this.player.viewAngle) * 0.005 * elapsed;
+
+            this.player.x -= dx;
+            this.player.y += dy;
+
+            let intX = Math.floor(this.player.x);
+            let intY = Math.floor(this.player.y);
+
+            if ((!this.map.inBound(intY, intX)) || this.map.at(intY, intX) == Cell.Wall) {
+                this.player.x += dx;
+                this.player.y -= dy;
             }
         }
     }

@@ -1,12 +1,12 @@
 import jquery from 'jquery';
 import { TerminalScreen } from './terminal';
 import { Map, Cell } from './map';
-import { Keyboard } from './keyboard';
+import { Controller } from './controller';
 import { Player } from './player';
 import { A3 } from './a3';
 
 
-const screenWidth = 240;
+const screenWidth = 120;
 const screenHeight = 80;
 const textFont = '20px Courier New';
 
@@ -41,10 +41,10 @@ jquery(document).ready(function() {
         "#....................#",
         "######################"
     ]);
-    let keyboard = new Keyboard();
+    let controller = new Controller();
     let terminal = TerminalScreen.create(screenWidth, screenHeight, textFont, 'canvas_element');
     let player = new Player();
-    let a3 = new A3(terminal, keyboard, map, player);
+    let a3 = new A3(terminal, controller, map, player);
 
     setTimeout(() => runRendering(a3), 0);
 });

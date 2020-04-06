@@ -1,5 +1,29 @@
+export var Colors = {
+    BLACK: '#000000',
+    WHITE: '#ffffff',
+    GREEN: '#006400'
+};
+
+// class FastTextDrawer {
+//     constructor(height, width, context) {
+//         this.context = context;
+//     }
+
+//     update() {
+
+//     }
+// };
+
 export class TerminalScreen {
-    constructor(width, height, font, buffer, canvas, context, symbolWidth, symbolHeight) {
+    constructor(
+        width,
+        height,
+        font,
+        buffer,
+        canvas,
+        context,
+        symbolWidth,
+        symbolHeight) {
         this.width = width;
         this.height = height;
         this.font = font;
@@ -16,9 +40,10 @@ export class TerminalScreen {
             throw "Cant get canvas";
         }
 
-        let context = canvas.getContext('2d');
+        let context = canvas.getContext('2d', { alpha: false });
 
         context.font = font;
+        context.imageSmoothingEnabled= false
 
         let symbolWidth = context.measureText('M').width;
         let symbolHeight = context.measureText('\u{2588}').width * 2 - 2;
@@ -28,7 +53,7 @@ export class TerminalScreen {
 
         let buffer = Array.from({length: width * height}, _ => ' ');
 
-        context.fillStyle = '#000000';
+        context.fillStyle = Colors.BLACK;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         return new TerminalScreen(width, height, font, buffer, canvas, context, symbolWidth, symbolHeight);
@@ -37,7 +62,7 @@ export class TerminalScreen {
     clear() {
         for (let i = 0; i < this.height * this.width; i++) {
             this.buffer[i] = ' ';
-        }        
+        }
     }
 
     put(smb, y, x) {
@@ -51,10 +76,10 @@ export class TerminalScreen {
     }
 
     update() {
-        this.context.fillStyle = '#000000';
+        this.context.fillStyle = Colors.BLACK;
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.context.fillStyle = "#ffffff";
+        this.context.fillStyle = Colors.GREEN;
         this.context.font = this.font;
         this.context.textBaseline = 'top';
 

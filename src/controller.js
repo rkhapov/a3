@@ -4,7 +4,11 @@ export var Key = {
     LeftArrow: 37,
     UpArrow: 38,
     RightArrow: 39,
-    DownArrow: 40
+    DownArrow: 40,
+    W: 87,
+    S: 83,
+    A: 65,
+    D: 68
 }
 
 export var KeyState = {
@@ -12,12 +16,34 @@ export var KeyState = {
     Released: 1
 }
 
-export class Keyboard {
+export class Controller {
     constructor() {
         this.codeToState = {};
-
         jquery(document).keydown(e => this._onKeyDown(e));
         jquery(document).keyup(e => this._onKeyUp(e));
+        this.lastMouseCords = [];
+        jquery(document).mousemove(e => this._onMouseMove(e));
+        this.mouseHandler = null;
+    }
+
+    onMouseMove(handler) {
+        if (this.mouseHandler == null) {
+            this.mouseHandler = handler;
+        }
+    }
+
+    _onMouseMove(e) {
+        let x = e.clientX;
+        if (this.lastMouseCords.length + 1 > 5) {
+            this.lastMouseCords.shift();
+        }
+
+        this.lastMouseCords.push(x);
+        let average = this.lastMouseCords.reduce((a, b) => a + b, 0) / this.lastMouseCords.length || 0;
+
+        if (this.mouseHandler != null) {
+            this.mouseHandler(average);
+        }
     }
 
     getState(code) {
