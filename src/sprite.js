@@ -10,6 +10,7 @@ var Sprite = /** @class */ (function () {
         return fetch('build/sprites/' + name + '.txt')
             .then(function (response) { return response.text(); })
             .then(function (text) {
+            console.log(text);
             var stripped = text.replace(/(\r\n|\n|\r)/gm, '');
             return new Sprite(stripped, width, height);
         });

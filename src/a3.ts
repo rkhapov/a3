@@ -1,5 +1,5 @@
 import {Controller, Key} from './controller';
-import {Cell, Map} from './map';
+import {Cell, Map, MapObject} from './map';
 import {TerminalScreen} from './terminal';
 import {Player} from './player';
 import {Sprite} from "./sprite";
@@ -25,6 +25,7 @@ export class A3 {
     private readonly map: Map;
     private readonly player: Player;
     private readonly wallSprite: Sprite;
+    private readonly skeletonSprite: Sprite;
     private lastMousePosition: number;
 
     constructor(
@@ -32,22 +33,23 @@ export class A3 {
         controller: Controller,
         map: Map,
         player: Player,
-        wallSprite: Sprite) {
+        wallSprite: Sprite,
+        skeletonSprite: Sprite) {
         this.terminal = terminal;
         this.controller = controller;
         this.map = map;
         this.player = player;
         this.lastMousePosition = -1;
+        this.skeletonSprite = skeletonSprite;
         this.wallSprite = wallSprite;
         controller.onMouseMove(e => this._onMouseMove(e));
     }
 
     public render(elapsed: number): void {
-        this._processKeyboard(elapsed);
-
-        this._draw3dScene();
-
-        this._drawMetaInfo(elapsed);
+        this.processKeyboard(elapsed);
+        this.draw3dScene();
+        this.drawObjects();
+        this.drawMetaInfo(elapsed);
     }
 
     private _onMouseMove(newX) {
@@ -83,7 +85,7 @@ export class A3 {
         this.player.viewAngle += 0.003 * elapsed;
     }
 
-    private _draw3dScene() {
+    private draw3dScene() {
         let screenWidth = this.terminal.width;
         let screenHeight = this.terminal.height;
         let viewDepth = this.player.viewDepth;
@@ -102,12 +104,72 @@ export class A3 {
                         let sampleY = (y - ceilCord) / (floorCord - ceilCord);
                         let wallSymbol = this.wallSprite.sample(ray.sampleX, sampleY);
                         this.terminal.put(wallSymbol, y, x);
-                    }
-                    else {
+                    } else {
                         this.terminal.put(RenderCharacters.LightShade, y, x);
                     }
                 } else {
                     this.terminal.put(RenderCharacters.MediumShade, y, x);
+                }
+            }
+        }
+    }
+
+    private drawObjects(): void {
+        let objects = this.map.getObjects();
+        let playerX = this.player.x;
+        let playerY = this.player.y;
+        let eyeX = Math.sin(this.player.viewAngle);
+        let eyeY = Math.cos(this.player.viewAngle);
+        let pi2 = 2 * Math.PI;
+        let playerAngle = Math.atan2(eyeY, eyeX);
+        let fov = this.player.fov;
+        let viewDistance = this.player.viewDepth;
+        let screenHeight = this.terminal.height;
+        let screenWidth = this.terminal.width;
+        let halfFov = fov / 2;
+
+        for (let i = 0; i < objects.length; i++) {
+            let obj = objects[i];
+            let dx = obj.x - playerX;
+            let dy = obj.y - playerY;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > viewDistance || distance < 0.5) {
+                continue;
+            }
+
+            let angle = playerAngle - Math.atan2(dy, dx);
+
+            if (angle < -Math.PI) {
+                angle += pi2;
+            }
+            else if (angle > Math.PI) {
+                angle -= pi2;
+            }
+
+            let inPlayerFov = Math.abs(angle) < halfFov;
+
+            if (!inPlayerFov)
+                continue;
+
+            let ceilCord = Math.floor(screenHeight / 2 - screenHeight / distance);
+            let floorCord = screenHeight - ceilCord;
+            let height = floorCord - ceilCord;
+            let aspectRatio = this.skeletonSprite.height / this.skeletonSprite.width;
+            let width = height / aspectRatio;
+            let middle = (0.5 * angle / halfFov + 0.5) * screenWidth;
+
+            for (let x = 0; x < width; x++) {
+                let sampleX = x / width;
+                let column = Math.floor(middle + x - width / 2);
+                if (column < 0 || column >= screenWidth)
+                    continue;
+                for (let y = 0; y < height; y++) {
+                    let sampleY = y / height;
+                    let symbol = this.skeletonSprite.sample(sampleX, sampleY);
+                    if (symbol == ' ' || symbol.charCodeAt(0) == 160)
+                        continue;
+                    this.terminal.put(symbol, ceilCord + y, column)
                 }
             }
         }
@@ -145,14 +207,11 @@ export class A3 {
 
                 if (angle > -oneFourthOfPi && angle < oneFourthOfPi) {
                     sampleX = currentY - testY;
-                }
-                else if (angle > oneFourthOfPi && angle < threeFourthOfPi) {
+                } else if (angle > oneFourthOfPi && angle < threeFourthOfPi) {
                     sampleX = currentX - testX;
-                }
-                else if (angle < -oneFourthOfPi && angle > -threeFourthOfPi) {
+                } else if (angle < -oneFourthOfPi && angle > -threeFourthOfPi) {
                     sampleX = currentX - testX;
-                }
-                else {
+                } else {
                     sampleX = currentY - testY;
                 }
             }
@@ -166,7 +225,7 @@ export class A3 {
         };
     }
 
-    _processKeyboard(elapsed) {
+    processKeyboard(elapsed) {
         if (this.controller.isPressed(Key.LeftArrow)) {
             this._doLeftTurn(elapsed);
         }
@@ -240,20 +299,10 @@ export class A3 {
         }
     }
 
-    _drawMetaInfo(elapsed) {
+    drawMetaInfo(elapsed) {
         let fps = (1000 / elapsed).toFixed();
         let posString = 'Y=' + this.player.y.toFixed(2) + ' X=' + this.player.x.toFixed(2) + ' A=' + this.player.viewAngle.toFixed(2) + ' FPS=' + fps;
         this.terminal.putString(posString, 0, 0);
-
-        for (let y = 0; y < this.map.height; y++) {
-            for (let x = 0; x < this.map.width; x++) {
-                this.terminal.put(this.map.at(y, x).symbol, y + 1, x);
-            }
-        }
-
-        let intX = Math.floor(this.player.x);
-        let intY = Math.floor(this.player.y);
-
-        this.terminal.put('P', intY + 1, intX);
+        this.terminal.putString(posString, 0, 0);
     }
 }

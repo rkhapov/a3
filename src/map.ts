@@ -1,7 +1,18 @@
 export var Cell = {
     Wall: {index: 0, symbol: '#'},
-    Empty: {index: 1, symbol: '.'}
+    Empty: {index: 1, symbol: '.'},
+    Skeleton: {index: 2, symbol: '@'}
 };
+
+export class MapObject {
+    public readonly x: number;
+    public readonly y: number;
+
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+}
 
 export class Map {
     private readonly map: Array<any[]>;
@@ -20,10 +31,32 @@ export class Map {
         let map = new Array(height);
 
         for (let i = 0; i < height; i++) {
-            map[i] = Array.from(strings[i].split('').map(c => c === '#' ? Cell.Wall : Cell.Empty));
+            map[i] = Array.from(strings[i].split('').map(c => Map.getCellBySymbol(c)));
         }
 
         return new Map(map, height, width);
+    }
+
+    private static getCellBySymbol(smb: string) {
+        switch(smb) {
+            case '#': return Cell.Wall;
+            case '@': return Cell.Skeleton;
+            default: return Cell.Empty;
+        }
+    }
+
+    public getObjects(): MapObject[] {
+        let objects = new Array<MapObject>();
+
+        for (let i = 0; i < this.height; i++) {
+            for (let j = 0; j < this.width; j++) {
+                if (this.map[i][j] === Cell.Skeleton) {
+                    objects.push(new MapObject(j + 0.5, i + 0.5));
+                }
+            }
+        }
+
+        return objects;
     }
 
     public inBound(y: number, x: number): boolean {

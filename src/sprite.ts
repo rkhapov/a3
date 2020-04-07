@@ -13,6 +13,7 @@ export class Sprite {
         return fetch('build/sprites/' + name + '.txt')
             .then(response => response.text())
             .then(text => {
+                console.log(text);
                 let stripped = text.replace(/(\r\n|\n|\r)/gm, '');
                 return new Sprite(stripped, width, height);
             });

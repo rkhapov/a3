@@ -17,20 +17,22 @@ exports.RenderCharacters = {
     LightShade: "\u2591"
 };
 var A3 = /** @class */ (function () {
-    function A3(terminal, controller, map, player, wallSprite) {
+    function A3(terminal, controller, map, player, wallSprite, skeletonSprite) {
         var _this = this;
         this.terminal = terminal;
         this.controller = controller;
         this.map = map;
         this.player = player;
         this.lastMousePosition = -1;
+        this.skeletonSprite = skeletonSprite;
         this.wallSprite = wallSprite;
         controller.onMouseMove(function (e) { return _this._onMouseMove(e); });
     }
     A3.prototype.render = function (elapsed) {
-        this._processKeyboard(elapsed);
-        this._draw3dScene();
-        this._drawMetaInfo(elapsed);
+        this.processKeyboard(elapsed);
+        this.draw3dScene();
+        this.drawObjects();
+        this.drawMetaInfo(elapsed);
     };
     A3.prototype._onMouseMove = function (newX) {
         if (this.lastMousePosition < 0) {
@@ -62,7 +64,7 @@ var A3 = /** @class */ (function () {
     A3.prototype._doRightTurn = function (elapsed) {
         this.player.viewAngle += 0.003 * elapsed;
     };
-    A3.prototype._draw3dScene = function () {
+    A3.prototype.draw3dScene = function () {
         var screenWidth = this.terminal.width;
         var screenHeight = this.terminal.height;
         var viewDepth = this.player.viewDepth;
@@ -86,6 +88,58 @@ var A3 = /** @class */ (function () {
                 }
                 else {
                     this.terminal.put(exports.RenderCharacters.MediumShade, y, x);
+                }
+            }
+        }
+    };
+    A3.prototype.drawObjects = function () {
+        var objects = this.map.getObjects();
+        var playerX = this.player.x;
+        var playerY = this.player.y;
+        var eyeX = Math.sin(this.player.viewAngle);
+        var eyeY = Math.cos(this.player.viewAngle);
+        var pi2 = 2 * Math.PI;
+        var playerAngle = Math.atan2(eyeY, eyeX);
+        var fov = this.player.fov;
+        var viewDistance = this.player.viewDepth;
+        var screenHeight = this.terminal.height;
+        var screenWidth = this.terminal.width;
+        var halfFov = fov / 2;
+        for (var i = 0; i < objects.length; i++) {
+            var obj = objects[i];
+            var dx = obj.x - playerX;
+            var dy = obj.y - playerY;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > viewDistance || distance < 0.5) {
+                continue;
+            }
+            var angle = playerAngle - Math.atan2(dy, dx);
+            if (angle < -Math.PI) {
+                angle += pi2;
+            }
+            else if (angle > Math.PI) {
+                angle -= pi2;
+            }
+            var inPlayerFov = Math.abs(angle) < halfFov;
+            if (!inPlayerFov)
+                continue;
+            var ceilCord = Math.floor(screenHeight / 2 - screenHeight / distance);
+            var floorCord = screenHeight - ceilCord;
+            var height = floorCord - ceilCord;
+            var aspectRatio = this.skeletonSprite.height / this.skeletonSprite.width;
+            var width = height / aspectRatio;
+            var middle = (0.5 * angle / halfFov + 0.5) * screenWidth;
+            for (var x = 0; x < width; x++) {
+                var sampleX = x / width;
+                var column = Math.floor(middle + x - width / 2);
+                if (column < 0 || column >= screenWidth)
+                    continue;
+                for (var y = 0; y < height; y++) {
+                    var sampleY = y / height;
+                    var symbol = this.skeletonSprite.sample(sampleX, sampleY);
+                    if (symbol == ' ' || symbol.charCodeAt(0) == 160)
+                        continue;
+                    this.terminal.put(symbol, ceilCord + y, column);
                 }
             }
         }
@@ -138,7 +192,7 @@ var A3 = /** @class */ (function () {
             sampleX: sampleX
         };
     };
-    A3.prototype._processKeyboard = function (elapsed) {
+    A3.prototype.processKeyboard = function (elapsed) {
         if (this.controller.isPressed(controller_1.Key.LeftArrow)) {
             this._doLeftTurn(elapsed);
         }
@@ -194,18 +248,11 @@ var A3 = /** @class */ (function () {
             }
         }
     };
-    A3.prototype._drawMetaInfo = function (elapsed) {
+    A3.prototype.drawMetaInfo = function (elapsed) {
         var fps = (1000 / elapsed).toFixed();
         var posString = 'Y=' + this.player.y.toFixed(2) + ' X=' + this.player.x.toFixed(2) + ' A=' + this.player.viewAngle.toFixed(2) + ' FPS=' + fps;
         this.terminal.putString(posString, 0, 0);
-        for (var y = 0; y < this.map.height; y++) {
-            for (var x = 0; x < this.map.width; x++) {
-                this.terminal.put(this.map.at(y, x).symbol, y + 1, x);
-            }
-        }
-        var intX = Math.floor(this.player.x);
-        var intY = Math.floor(this.player.y);
-        this.terminal.put('P', intY + 1, intX);
+        this.terminal.putString(posString, 0, 0);
     };
     return A3;
 }());

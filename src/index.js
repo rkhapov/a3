@@ -44,7 +44,7 @@ function runGame(a3) {
 jquery(document).ready(async function() {
     let map = Map.fromStrings([
         "###############################",
-        "#.........#...................#",
+        "#...@.....#...................#",
         "#..#..........#...............#",
         "#.........############........#",
         "#.........#..........#........#",
@@ -53,14 +53,14 @@ jquery(document).ready(async function() {
         "####......##########.#........#",
         "##...................#......###",
         "#........####........#........#",
-        "#........#..#........#........#",
+        "#........#.@#........#........#",
         "#........#..#........###......#",
         "#####.####..####.....#........#",
         "#####.####..####.....#........#",
         "#....................#......###",
-        "#....................#........#",
+        "#.............@@.....#........#",
         "#####.####..####.....###......#",
-        "#####.####..####.....#........#",
+        "#####.####..####.....#@.......#",
         "#....................#........#",
         "###############################"
     ]);
@@ -68,7 +68,8 @@ jquery(document).ready(async function() {
     let terminal = TerminalScreen.create(resolution.width, resolution.height, textFont, 'canvas_element');
     let player = new Player();
     let wallSprite = await Sprite.load('wall', 32, 32);
-    let a3 = new A3(terminal, controller, map, player, wallSprite);
+    let skeletonSprite = await Sprite.load('skeleton', 60, 60);
+    let a3 = new A3(terminal, controller, map, player, wallSprite, skeletonSprite   );
 
     setTimeout(() => runGame(a3), 0);
 });
