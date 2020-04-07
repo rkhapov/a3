@@ -4,15 +4,6 @@ export var Colors = {
     GREEN: '#006400'
 };
 
-// class FastTextDrawer {
-//     constructor(height, width, context) {
-//         this.context = context;
-//     }
-
-//     update() {
-
-//     }
-// };
 
 export class TerminalScreen {
     constructor(

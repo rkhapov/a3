@@ -9,11 +9,12 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack && exit 0"
+    "build": "tsc && webpack && cp -r sprites build/sprites && exit 0"
   },
   "author": "rkhapov",
   "license": "ISC",
   "dependencies": {
+    "@types/jquery": "^3.3.34",
     "jquery": "^3.4.1"
   },
   "devDependencies": {
