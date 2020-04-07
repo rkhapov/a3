@@ -1,7 +1,8 @@
-import { Key, Controller } from './controller';
-import { Cell, Map } from './map';
-import { TerminalScreen } from './terminal';
-import { Player } from './player';
+import {Controller, Key} from './controller';
+import {Cell, Map} from './map';
+import {TerminalScreen} from './terminal';
+import {Player} from './player';
+import {Sprite} from "./sprite";
 
 export var RenderCharacters = {
     Wall: '\u{2588}',
@@ -9,11 +10,13 @@ export var RenderCharacters = {
     WallWithMediumShade: '\u{2592}',
     WallWithLightShade: '\u{2591}',
     Empty: ' ',
-    Floor: '#',
+    Floor: '\u{2588}',
     FloorWithDarkShade: 'x',
     FloorWithMediumShade: '~',
     FloorWithLightShade: '-',
-    Boundary: '|'
+    Boundary: '|',
+    MediumShade: '\u{2592}',
+    LightShade: '\u{2591}'
 };
 
 export class A3 {
@@ -21,14 +24,21 @@ export class A3 {
     private readonly controller: Controller;
     private readonly map: Map;
     private readonly player: Player;
+    private readonly wallSprite: Sprite;
     private lastMousePosition: number;
 
-    constructor(terminal: TerminalScreen, controller: Controller, map: Map, player: Player) {
+    constructor(
+        terminal: TerminalScreen,
+        controller: Controller,
+        map: Map,
+        player: Player,
+        wallSprite: Sprite) {
         this.terminal = terminal;
         this.controller = controller;
         this.map = map;
         this.player = player;
         this.lastMousePosition = -1;
+        this.wallSprite = wallSprite;
         controller.onMouseMove(e => this._onMouseMove(e));
     }
 
@@ -51,16 +61,13 @@ export class A3 {
         if (newX === this.lastMousePosition) {
             if (newX === 0) {
                 this._doLeftTurn(mouseSensitivity);
-            }
-            else {
+            } else {
                 this._doRightTurn(mouseSensitivity);
             }
-        }
-        else {
+        } else {
             if (newX < this.lastMousePosition) {
                 this._doLeftTurn(mouseSensitivity);
-            }
-            else {
+            } else {
                 this._doRightTurn(mouseSensitivity);
             }
         }
@@ -84,59 +91,29 @@ export class A3 {
         for (let x = 0; x < screenWidth; x++) {
             let ray = this._computeRay(x);
 
-            let ceil = (screenHeight / 2) - screenHeight / (ray.distance * Math.cos(this.player.viewAngle - ray.angle));
-            let floor = screenHeight - ceil;
-
-            let wallSymbol = RenderCharacters.Empty;
-
-            if (ray.distance <= viewDepth / 3) {
-                wallSymbol = RenderCharacters.Wall;
-            }
-            else if (ray.distance < viewDepth / 2) {
-                wallSymbol = RenderCharacters.WallWithDarkShade;
-            }
-            else if (ray.distance < viewDepth / 1.5) {
-                wallSymbol = RenderCharacters.WallWithMediumShade;
-            }
-            else if (ray.distance < viewDepth) {
-                wallSymbol = RenderCharacters.WallWithLightShade;
-            }
-
-            if (ray.boundary) {
-                wallSymbol = RenderCharacters.Boundary;
-            }
+            let ceilCord = (screenHeight / 2) - screenHeight / (ray.distance * Math.cos(this.player.viewAngle - ray.angle));
+            let floorCord = screenHeight - ceilCord;
 
             for (let y = 0; y < screenHeight; y++) {
-                if (y <= ceil) {
+                if (y <= ceilCord) {
                     this.terminal.put(RenderCharacters.Empty, y, x);
-                }
-                else if (y > ceil && y <= floor) {
-                    this.terminal.put(wallSymbol, y, x);
-                }
-                else {
-                    let b = 1.0 - (y - screenHeight / 2) / (screenHeight / 2);
-                    let floorSymbol = RenderCharacters.Empty;
-
-                    if (b < 0.25) {
-                        floorSymbol = RenderCharacters.Floor;
+                } else if (y > ceilCord && y <= floorCord) {
+                    if (ray.distance < viewDepth) {
+                        let sampleY = (y - ceilCord) / (floorCord - ceilCord);
+                        let wallSymbol = this.wallSprite.sample(ray.sampleX, sampleY);
+                        this.terminal.put(wallSymbol, y, x);
                     }
-                    else if (b < 0.5) {
-                        floorSymbol = RenderCharacters.FloorWithDarkShade;
+                    else {
+                        this.terminal.put(RenderCharacters.LightShade, y, x);
                     }
-                    else if (b < 0.75) {
-                        floorSymbol = RenderCharacters.FloorWithMediumShade;
-                    }
-                    else if (b < 0.9) {
-                        floorSymbol = RenderCharacters.FloorWithLightShade;
-                    }
-
-                    this.terminal.put(floorSymbol, y, x);
+                } else {
+                    this.terminal.put(RenderCharacters.MediumShade, y, x);
                 }
             }
         }
     }
 
-    _computeRay(x) {
+    private _computeRay(x) {
         let fov = this.player.fov;
         let playerX = this.player.x;
         let playerY = this.player.y;
@@ -145,10 +122,12 @@ export class A3 {
         let yRayUnit = Math.cos(rayAngle);
         let rayLength = 0.0;
         let hit = false;
-        let boundary = false;
+        let sampleX: number = 0;
 
         while (!hit && rayLength < this.player.viewDepth) {
             rayLength += 0.01;
+            let currentX = playerX + xRayUnit * rayLength;
+            let currentY = playerY + yRayUnit * rayLength;
 
             let testX = Math.floor(playerX + xRayUnit * rayLength);
             let testY = Math.floor(playerY + yRayUnit * rayLength);
@@ -156,36 +135,34 @@ export class A3 {
             if (!this.map.inBound(testY, testX)) {
                 hit = true;
                 rayLength = this.player.viewDepth;
-            }
-            else if (this.map.at(testY, testX) === Cell.Wall) {
+            } else if (this.map.at(testY, testX) === Cell.Wall) {
                 hit = true;
+                let blockMiddleX = testX + 0.5;
+                let blockMiddleY = testY + 0.5;
+                let angle = Math.atan2(currentY - blockMiddleY, currentX - blockMiddleX);
+                let oneFourthOfPi = Math.PI * 0.25;
+                let threeFourthOfPi = Math.PI * 0.75;
 
-                let boundaries = [];
-
-                for (let dx = 0; dx < 2; dx++) {
-                    for (let dy = 0; dy < 2; dy++) {
-                        let vy = testY + dy - playerY;
-                        let vx = testX + dx - playerX;
-                        let distanceToBound = Math.sqrt(vy * vy + vx * vx);
-                        let scalarMul = xRayUnit * vx / distanceToBound + yRayUnit * vy / distanceToBound;
-                        boundaries.push({distance: distanceToBound, scalar: scalarMul});
-                    }
+                if (angle > -oneFourthOfPi && angle < oneFourthOfPi) {
+                    sampleX = currentY - testY;
                 }
-
-                boundaries.sort((a, b) => a.distance - b.distance);
-
-                let maxBoundAngle = 0.005;
-                boundary = Math.acos(boundaries[0].scalar) < maxBoundAngle
-                           || Math.acos(boundaries[1].scalar) < maxBoundAngle
-                           || Math.acos(boundaries[2].scalar) < maxBoundAngle;
+                else if (angle > oneFourthOfPi && angle < threeFourthOfPi) {
+                    sampleX = currentX - testX;
+                }
+                else if (angle < -oneFourthOfPi && angle > -threeFourthOfPi) {
+                    sampleX = currentX - testX;
+                }
+                else {
+                    sampleX = currentY - testY;
+                }
             }
         }
 
         return {
             hit: hit,
             distance: rayLength,
-            boundary: boundary,
-            angle: rayAngle
+            angle: rayAngle,
+            sampleX: sampleX
         };
     }
 

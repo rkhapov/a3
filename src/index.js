@@ -6,9 +6,27 @@ import { Player } from './player';
 import { A3 } from './a3';
 import { Sprite } from "./sprite";
 
+const lowResolution = {
+    width: 80,
+    height: 25
+};
 
-const screenWidth = 120;
-const screenHeight = 80;
+const mediumResolution = {
+    width: 120,
+    height: 80
+};
+
+const highResolution = {
+    width: 240,
+    height: 140
+};
+
+const ultraResolution = {
+    width: 320,
+    height: 240
+};
+
+const resolution = highResolution;
 const textFont = '20px Courier New';
 
 let previousTime = performance.now();
@@ -25,30 +43,32 @@ function runGame(a3) {
 
 jquery(document).ready(async function() {
     let map = Map.fromStrings([
-        "######################",
-        "#.........#..........#",
-        "#..#..........#......#",
-        "#.........############",
-        "#.........#..........#",
-        "#.........#..........#",
-        "#.........#..........#",
-        "####......##########.#",
-        "##...................#",
-        "#........####........#",
-        "#........#..#........#",
-        "#........#..#........#",
-        "#####.####..####.....#",
-        "#####.####..####.....#",
-        "#....................#",
-        "######################"
+        "###############################",
+        "#.........#...................#",
+        "#..#..........#...............#",
+        "#.........############........#",
+        "#.........#..........#........#",
+        "#.........#..........###......#",
+        "#.........#..........#........#",
+        "####......##########.#........#",
+        "##...................#......###",
+        "#........####........#........#",
+        "#........#..#........#........#",
+        "#........#..#........###......#",
+        "#####.####..####.....#........#",
+        "#####.####..####.....#........#",
+        "#....................#......###",
+        "#....................#........#",
+        "#####.####..####.....###......#",
+        "#####.####..####.....#........#",
+        "#....................#........#",
+        "###############################"
     ]);
     let controller = new Controller();
-    let terminal = TerminalScreen.create(screenWidth, screenHeight, textFont, 'canvas_element');
+    let terminal = TerminalScreen.create(resolution.width, resolution.height, textFont, 'canvas_element');
     let player = new Player();
-    let a3 = new A3(terminal, controller, map, player);
-    let sprite = await Sprite.load('wall', 32, 32);
-
-    console.log("'", sprite.sample(0.5, 0.5), "'");
+    let wallSprite = await Sprite.load('wall', 32, 32);
+    let a3 = new A3(terminal, controller, map, player, wallSprite);
 
     setTimeout(() => runGame(a3), 0);
 });
